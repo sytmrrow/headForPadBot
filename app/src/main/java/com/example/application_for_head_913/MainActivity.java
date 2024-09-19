@@ -217,7 +217,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
 
     private void startListening() {
         if (mIat == null) {
-            showCustomToast("创建对象失败，请确认 libmsc.so 放置正确，且有调用 createUtility 进行初始化");
+            showTip("创建对象失败，请确认 libmsc.so 放置正确，且有调用 createUtility 进行初始化");
             return;
         }
         buffer.setLength(0);
@@ -226,21 +226,20 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         setParam();
         resultCode = mIat.startListening(mRecognizerListener);
         if (dialogType == 0) {
-            showCustomToast("开始听写");
+            showTip("开始听写");
         } else if (dialogType == 1) {
             resultCode = mIat.startListening(mRecognizerListener);
             if (resultCode != ErrorCode.SUCCESS) {
-                showCustomToast("听写失败,错误码：" + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
+                showTip("听写失败,错误码：" + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
             } else {
-                showCustomToast("开始听写");
+                showTip("开始听写");
             }
         } else if (dialogType == 2) {
-            showAlertDialog();
             resultCode = mIat.startListening(mRecognizerListener);
             if (resultCode != ErrorCode.SUCCESS) {
-                showCustomToast("听写失败,错误码：" + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
+                showTip("听写失败,错误码：" + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
             } else {
-                showCustomToast("开始听写");
+                showTip("开始听写");
             }
         }
     }
@@ -254,46 +253,47 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         public void onInit(int code) {
             Log.e(TAG, "SpeechRecognizer init() code = " + code);
             if (code != ErrorCode.SUCCESS) {
-                showCustomToast("初始化失败，错误码：" + code + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
+                showTip("初始化失败，错误码：" + code + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
             }
         }
     };
 
+   // 听写监听器
     private RecognizerListener mRecognizerListener = new RecognizerListener() {
-        @Override
-        public void onBeginOfSpeech() {
-            showCustomToast("开始说话");
-            Log.d(TAG, "onBeginOfSpeech: 开始语音输入");
-            // 确保“再次使用‘你好’唤醒可中断发言”的 Toast 在开始说话时消失
-            if (wakeUpToast != null) {
-                wakeUpToast.cancel();
-            }
-            // 延迟显示“再次使用‘你好’唤醒可中断发言”提示
-            handler.postDelayed(() -> showCustomWakeUpToast(), 500); // 延迟 500ms 后显示提示
-        }
+
+       @Override
+       public void onBeginOfSpeech() {
+           // 此回调表示：sdk内部录音机已经准备好了，用户可以开始语音输入
+           showTip("开始说话");
+           Log.d(TAG, "onBeginOfSpeech: 开始语音输入");
+
+           // 显示“再次使用‘你好’唤醒可中断发言”提示
+           handler.postDelayed(() -> {
+               showTip("再次使用‘你好’唤醒可中断发言");
+               Log.d(TAG, "showTip: 显示中间提示 '再次使用‘你好’唤醒可中断发言'");
+           }, 500); // 延时500毫秒显示
+       }
 
         @Override
         public void onError(SpeechError error) {
+            // Tips：
+            // 错误码：10118(您没有说话)，可能是录音机权限被禁，需要提示用户打开应用的录音权限。
             Log.d(TAG, "onError " + error.getPlainDescription(true));
-            showCustomToast(error.getPlainDescription(true));
+            showTip(error.getPlainDescription(true));
             if (error.getErrorCode() == 20006) {
-                showCustomToast("启动录音失败，请检查录音权限和设备设置。");
+                showTip("启动录音失败，请检查录音权限和设备设置。");
             }
         }
 
         @Override
         public void onEndOfSpeech() {
-            showCustomToast("结束说话");
+            // 此回调表示：检测到了语音的尾端点，已经进入识别过程，不再接受语音输入
+            showTip("结束说话");
             Log.d(TAG, "onEndOfSpeech: 语音输入结束");
-
-            // 结束后关闭 Toast
-            if (wakeUpToast != null) {
-                wakeUpToast.cancel();
-            }
-            // 在开始下一次听写前添加一个小间隔
-            handler.postDelayed(() -> startListeningWithDelay(), 500); // 延迟500毫秒后重新开始听写
+            //player.play();
+            // 重新开始听写
+            startListeningWithDelay(); // 这里调用 startListening() 方法以继续识别
         }
-
 
         ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -335,30 +335,28 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             }
         }
     };
-
+    private void showTip(final String str) {
+        if (mToast != null) {
+            mToast.cancel();
+        }
+        mToast = Toast.makeText(getApplicationContext(), str, Toast.LENGTH_SHORT);
+        mToast.show();
+    }
     private RecognizerDialogListener mRecognizerDialogListener = new RecognizerDialogListener() {
         public void onResult(RecognizerResult results, boolean isLast) {
             printResult(results);
         }
 
         public void onError(SpeechError error) {
-            showCustomToast(error.getPlainDescription(true));
+            showTip(error.getPlainDescription(true));
         }
     };
-
-    // 自定义 Toast 显示方法
-    private void showCustomToast(String message) {
-        // 加载自定义布局
-        View layout = getLayoutInflater().inflate(R.layout.toast_custom_layout, findViewById(android.R.id.content), false);
-        TextView toastMessage = layout.findViewById(R.id.toast_message);
-        toastMessage.setText(message);
-
-        // 创建并配置 Toast
-        Toast toast = new Toast(getApplicationContext());
-        toast.setDuration(Toast.LENGTH_SHORT);
-        toast.setView(layout);
-        toast.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 150); // 确保 Toast 显示在页面底部
-        toast.show();
+    // 封装 Toast 显示方法，确保运行在主线程
+    private void showToast(final String message) {
+        runOnUiThread(() -> {
+            Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "showToast: 显示 Toast - " + message);
+        });
     }
 
 
@@ -485,34 +483,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         mIat.setParameter("KEY_REQUEST_FOCUS", "true");
     }
 
-    private void showAlertDialog() {
-        dialog = new AlertDialog.Builder(this)
-                .setTitle("自定弹框")
-                .setMessage("正在识别，请稍后...")
-                .setIcon(R.mipmap.ic_launcher)
-                .create();
-        dialog.show();
-    }
-    // 在语音输入开始和结束之间显示自定义 Toast
-    // 显示自定义的“再次使用‘你好’唤醒可中断发言” Toast
-    private void showCustomWakeUpToast() {
-        // 如果已有 Toast 显示，则取消它
-        if (wakeUpToast != null) {
-            wakeUpToast.cancel();
-        }
 
-        // 加载自定义布局
-        View layout = getLayoutInflater().inflate(R.layout.toast_custom_layout, null);
-        TextView toastMessage = layout.findViewById(R.id.toast_message);
-        toastMessage.setText("再次使用‘你好’唤醒可中断发言");
 
-        // 创建并配置 Toast
-        wakeUpToast = new Toast(getApplicationContext());
-        wakeUpToast.setView(layout);
-        wakeUpToast.setDuration(Toast.LENGTH_LONG);
-        wakeUpToast.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 150); // 确保 Toast 显示在页面底部
-        wakeUpToast.show();
-    }
+
 
 
     @Override
