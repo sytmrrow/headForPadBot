@@ -6,12 +6,11 @@
     android:background="#80000000"
     android:padding="20dp">
 
-    <TextView
-        android:id="@+id/dialog_message"
+    <Button
+        android:id="@+id/pause_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="正在识别..."
-        android:textSize="18sp"
-        android:textColor="#FFFFFF" />
+        android:text="暂停并录音" />
+
 
 </LinearLayout>

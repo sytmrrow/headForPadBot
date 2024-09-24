@@ -106,6 +106,7 @@ public class TextToSpeechUtil {
             showTip("暂停播放");
         }
 
+
         @Override
         public void onSpeakResumed() {
             Log.d(TAG, "继续播放");
@@ -146,7 +147,11 @@ public class TextToSpeechUtil {
             // 处理事件
         }
     };
-
+    public void init() {
+        if (mTts == null) {
+            mTts = SpeechSynthesizer.createSynthesizer(mContext, mTtsInitListener);
+        }
+    }
     public void release() {
         if (mTts != null) {
             mTts.stopSpeaking();

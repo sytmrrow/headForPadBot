@@ -115,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     private int dialogType;
     private int resultCode = 0;
     private int handlerCode = 0x123;
+    private Button pauseButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,6 +124,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         setContentView(R.layout.activity_main);
         checkPermissionAndInitialize();
         initializeViews();
+        pauseButton = findViewById(R.id.pause_button);
 
         TextToSpeechUtil ttsUtil = TextToSpeechUtil.getInstance(this);
         // 设置 TTS 监听器
@@ -223,7 +225,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                             JSONObject jsonResponse = new JSONObject(responseData);
                             // 处理返回结果
                             String handledResponse = handleResponseType(jsonResponse);
-                            runOnUiThread(() -> serverResponseTextView.setText(handledResponse));
+                            runOnUiThread(() -> {serverResponseTextView.setText(handledResponse);
+                            // 调用 TTS 播放 content
+                            playTextToSpeech(handledResponse);});
                         } catch (JSONException e) {
                             Log.e("JSON Error", "Failed to parse JSON: " + e.getMessage());
                             runOnUiThread(() -> serverResponseTextView.setText("JSON Parse Error"));
@@ -287,6 +291,24 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             }
         }
     }
+    private void playTextToSpeech(String text) {
+        if (!ttsInitialized) {
+            ttsUtil = TextToSpeechUtil.getInstance(this);
+            ttsUtil.init(); // 初始化 TTS
+            ttsInitialized = true;
+        }
+        ttsUtil.setListener(() -> {
+            // 播放完成后继续录音
+            startListening();
+        });
+        // 设置暂停按钮的点击事件
+        pauseButton.setOnClickListener(v -> {
+            ttsUtil.stopSpeaking(); // 暂停 TTS 播放
+            startListening(); // 启动录音
+        });
+        ttsUtil.speakText(text); // 播放文本
+    }
+
 
     @Override
     public void onClick(View view) {

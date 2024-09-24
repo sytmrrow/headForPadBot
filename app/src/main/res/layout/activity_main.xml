@@ -125,5 +125,11 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp" />
+    <Button
+        android:id="@+id/pause_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="暂停并录音" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
