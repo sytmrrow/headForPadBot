@@ -21,6 +21,15 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginBottom="16dp" />
 
+    <!-- 在布局文件中添加 PlayerView -->
+    <com.google.android.exoplayer2.ui.PlayerView
+        android:id="@+id/playerView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/tv_wake_up_prompt"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- 包含三个问题的框 -->
     <androidx.cardview.widget.CardView
         android:id="@+id/questionCard"
@@ -29,7 +38,7 @@
         android:layout_margin="16dp"
         app:cardCornerRadius="8dp"
         app:cardElevation="4dp"
-        app:layout_constraintTop_toBottomOf="@id/tv_wake_up_prompt"
+        app:layout_constraintTop_toBottomOf="@id/playerView"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -81,82 +90,40 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- 显示语音转文字结果的框 -->
+    <!-- 语音识别的结果 -->
     <EditText
-        android:id="@+id/recordword"
-        android:layout_width="0dp"
+        android:id="@+id/myEditText"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="语音转文字的结果将显示在这里"
-        android:textSize="18sp"
+        android:hint="语音识别的结果"
         android:textColor="#000000"
-        android:background="#E0E0E0"
-        android:padding="12dp"
+        android:background="#00000000"
         app:layout_constraintTop_toBottomOf="@id/questionCard"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="16dp"/>
 
-    <!-- 底部的输入框 -->
-    <EditText
-        android:id="@+id/userInputEditText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:hint="请输入文本"
-        android:textColor="#673AB7"
-        android:textSize="18sp"
-        android:padding="12dp"
-        android:background="#E0E0E0"
-        app:layout_constraintTop_toBottomOf="@id/recordword"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/sendButton"
-        android:layout_marginTop="16dp" />
-
-    <!-- 发送按钮 -->
+    <!-- “已激活”按钮 -->
     <Button
-        android:id="@+id/sendButton"
+        android:id="@+id/activatedButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="发送"
-        app:layout_constraintTop_toTopOf="@id/userInputEditText"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginStart="16dp" />
+        android:text="已激活"
+        app:layout_constraintTop_toBottomOf="@id/myEditText"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="16dp" />
 
-    <!-- 底部的标注 -->
+    <!-- 模型返回的结果 -->
     <TextView
-        android:id="@+id/tv_model_note"
+        android:id="@+id/serverResponseTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="文字输入访问模型"
-        android:textSize="14sp"
+        android:text="模型返回的结果"
+        android:textSize="16sp"
         android:textColor="#FF0000"
-        android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/userInputEditText"
-        app:layout_constraintStart_toStartOf="parent"
+        android:padding="12dp"
+        app:layout_constraintTop_toBottomOf="@id/myEditText"
+        app:layout_constraintStart_toEndOf="@id/activatedButton"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="8dp" />
-
-    <!-- 服务器响应的 TextView，放在最底部 -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/serverResponseCard"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/tv_model_note"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp"
-        app:cardElevation="4dp"
-        app:cardCornerRadius="8dp">
-
-        <TextView
-            android:id="@+id/serverResponseTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="服务器响应将显示在这里"
-            android:textSize="16sp"
-            android:textColor="#FF0000"
-            android:padding="16dp"/>
-    </androidx.cardview.widget.CardView>
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

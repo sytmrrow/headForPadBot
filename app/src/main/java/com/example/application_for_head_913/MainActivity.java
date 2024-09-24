@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,13 +17,26 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.bumptech.glide.Glide;
+import android.os.Bundle;
+import android.widget.ImageView;
+import android.widget.VideoView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy;
+import com.bumptech.glide.load.resource.gif.GifDrawable;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target;
 import com.iflytek.cloud.ErrorCode;
 import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.RecognizerListener;
@@ -58,19 +72,31 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.Player; // 确保导入了 Player
+
 public class MainActivity extends AppCompatActivity implements OnClickListener {
     private boolean isWaitingForNextInput = false;
+    private boolean isListening = false;
+    private TextToSpeechUtil ttsUtil;
+    private boolean ttsInitialized = false;
     // 声明自定义 Toast
     private Toast wakeUpToast;
     private AlertDialog dialog; // 添加这个声明
 
 
-
+    private ExoPlayer player;
+    private PlayerView playerView;
     private TextView serverResponseTextView; // 用于显示服务器响应的TextView
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
-    private EditText userInputEditText; // 新增的EditText组件
-    private Button sendButton; // 发送按钮
     private static OkHttpClient client;
     private AudioManager audioManager;
     private AudioManager.OnAudioFocusChangeListener focusChangeListener;
@@ -95,30 +121,40 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         SpeechUtility.createUtility(this, SpeechConstant.APPID + "=b8585b05");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        checkPermissionAndInitialize();
+        initializeViews();
 
-        tvResult = findViewById(R.id.recordword);
+        TextToSpeechUtil ttsUtil = TextToSpeechUtil.getInstance(this);
+        // 设置 TTS 监听器
+        ttsUtil.setListener(() -> {
+            if (!isListening) {
+                isListening = true;
+                startListening(); // 语音播放完毕后继续录音
+            }
+        });
+        client = new OkHttpClient();
+
+        setupExoPlayer();
+    }
+
+
+    private void initializeViews() {
+        tvResult = findViewById(R.id.myEditText);
         serverResponseTextView = findViewById(R.id.serverResponseTextView);
         mIatDialog = new RecognizerDialog(this, mInitListener);
         mIatDialog.setListener(mRecognizerDialogListener);
         mIat = SpeechRecognizer.createRecognizer(this, mInitListener);
+    }
 
-        client = new OkHttpClient();
-
-        userInputEditText = findViewById(R.id.userInputEditText);
-        sendButton = findViewById(R.id.sendButton);
-
-        sendButton.setOnClickListener(v -> {
-            String userInput = userInputEditText.getText().toString();
-            if (!userInput.isEmpty()) {
-                PatrobotData data = new PatrobotData();
-                data.setPrompt(userInput);
-                sendRequestToServer(data);
-            } else {
-                Toast.makeText(MainActivity.this, "请输入文本", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        checkPermissionAndInitialize();
+    private void setupExoPlayer() {
+        playerView = findViewById(R.id.playerView);
+        player = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(player);
+        MediaItem mediaItem = MediaItem.fromUri("file:///android_asset/padbot.webm");
+        player.setMediaItem(mediaItem);
+        player.prepare();
+        player.setPlayWhenReady(true);
+        player.setRepeatMode(Player.REPEAT_MODE_ALL);
     }
 
     private void checkPermissionAndInitialize() {
@@ -183,7 +219,15 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                     if (res.isSuccessful()) {
                         String responseData = res.body().string();
                         Log.d("API Response", responseData);
-                        runOnUiThread(() -> serverResponseTextView.setText(responseData));
+                        try {
+                            JSONObject jsonResponse = new JSONObject(responseData);
+                            // 处理返回结果
+                            String handledResponse = handleResponseType(jsonResponse);
+                            runOnUiThread(() -> serverResponseTextView.setText(handledResponse));
+                        } catch (JSONException e) {
+                            Log.e("JSON Error", "Failed to parse JSON: " + e.getMessage());
+                            runOnUiThread(() -> serverResponseTextView.setText("JSON Parse Error"));
+                        }
                         new Thread(() -> {
                             try {
                                 Socket socket = new Socket();
@@ -285,15 +329,21 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             }
         }
 
-        @Override
-        public void onEndOfSpeech() {
-            // 此回调表示：检测到了语音的尾端点，已经进入识别过程，不再接受语音输入
-            showTip("结束说话");
-            Log.d(TAG, "onEndOfSpeech: 语音输入结束");
-            //player.play();
-            // 重新开始听写
-            startListeningWithDelay(); // 这里调用 startListening() 方法以继续识别
-        }
+       @Override
+       public void onEndOfSpeech() {
+           showTip("结束说话");
+           Log.d(TAG, "onEndOfSpeech: 语音输入结束");
+           isListening = false; // 结束录音后重置
+           if (isWaitingForNextInput) {
+               // 播放语音并在结束后继续录音
+               speakText("你好，我是小信，你可以向我提问", () -> {
+                   isListening = true; // 播放后设置为正在录音
+                   startListening(); // 开始录音
+               });
+           } else {
+               startListening(); // 继续进行语音识别
+           }
+       }
 
         ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -361,7 +411,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
 
 
     private void startListeningWithDelay() {
-        handler.postDelayed(() -> startListening(), 100);
+        mainHandler.postDelayed(this::startListening, 1000); // 1秒后继续识别
     }
 
     private void printResult(RecognizerResult results) {
@@ -482,9 +532,34 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         mIat.setParameter(SpeechConstant.ASR_PTT, "0");
         mIat.setParameter("KEY_REQUEST_FOCUS", "true");
     }
-
-
-
+    private void speakText(String content, Runnable onComplete) {
+        // 这里添加你播放语音的逻辑
+        // 播放结束后执行 onComplete.run()
+        TextToSpeechUtil ttsUtil = TextToSpeechUtil.getInstance(this);
+        ttsUtil.speakText(content);
+    }
+    private String handleResponseType(JSONObject jsonResponse) {
+        StringBuilder contentBuilder = new StringBuilder(); // 用于累积内容
+        try {
+            if (jsonResponse.has("response")) {
+                JSONObject response = jsonResponse.getJSONObject("response");
+                if (response.has("events")) {
+                    JSONArray events = response.getJSONArray("events");
+                    for (int i = 0; i < events.length(); i++) {
+                        JSONObject event = events.getJSONObject(i);
+                        if (event.has("data") && event.getJSONObject("data").has("content")) {
+                            String content = event.getJSONObject("data").getString("content");
+                            contentBuilder.append(content).append("\n"); // 添加内容并换行
+                        }
+                    }
+                }
+            }
+        } catch (JSONException e) {
+            e.printStackTrace(); // 错误处理
+            return ""; // 返回空字符串以指示错误
+        }
+        return contentBuilder.toString().trim(); // 返回累积的内容
+    }
 
 
 
@@ -496,6 +571,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         }
         if (audioManager != null) {
             audioManager.abandonAudioFocus(focusChangeListener);
+        }
+        if (ttsUtil != null) {
+            ttsUtil.release();
         }
     }
 }
