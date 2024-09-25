@@ -486,7 +486,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             Log.d(TAG, "printResult: 识别的文本 = " + text);
             String processedText = text.toLowerCase();
             Log.d(TAG, "Processed Text (all lowercase): " + processedText);
-            if (processedText.contains("你好")) {
+            if (processedText.contains("你好")||processedText.contains("您好")) {
                 isWaitingForNextInput = true;
                 runOnUiThread(() -> activatedButton.setText("已激活")); // 更新按钮文字为“已激活”
                 Log.d(TAG, "printResult: 进入等待下一句输入状态");
