@@ -65,7 +65,7 @@ public class TextToSpeechUtil {
         mTts.setParameter(SpeechConstant.PARAMS, null);
         mTts.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
         mTts.setParameter(SpeechConstant.VOICE_NAME, voicer);
-        mTts.setParameter(SpeechConstant.SPEED, "50");
+        mTts.setParameter(SpeechConstant.SPEED, "80");
         mTts.setParameter(SpeechConstant.PITCH, "50");
         mTts.setParameter(SpeechConstant.VOLUME, "50");
         mTts.setParameter(SpeechConstant.STREAM_TYPE, "3");

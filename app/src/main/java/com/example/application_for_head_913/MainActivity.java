@@ -84,9 +84,14 @@ import com.google.android.exoplayer2.Player; // 确保导入了 Player
 
 public class MainActivity extends AppCompatActivity implements OnClickListener {
     private boolean isWaitingForNextInput = false;
+    // 声明状态变量
+    private boolean isWaitingForResponse = false; // 用于标记是否在等待后端响应
+    // 声明一个状态变量
+    private boolean isSpeaking = false;
     private boolean isListening = false;
     private TextToSpeechUtil ttsUtil;
     private boolean ttsInitialized = false;
+    private Button activatedButton;
     // 声明自定义 Toast
     private Toast wakeUpToast;
     private AlertDialog dialog; // 添加这个声明
@@ -143,6 +148,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     private void initializeViews() {
         tvResult = findViewById(R.id.myEditText);
         serverResponseTextView = findViewById(R.id.serverResponseTextView);
+        activatedButton = findViewById(R.id.activatedButton); // 初始化未激活按钮
         mIatDialog = new RecognizerDialog(this, mInitListener);
         mIatDialog.setListener(mRecognizerDialogListener);
         mIat = SpeechRecognizer.createRecognizer(this, mInitListener);
@@ -186,6 +192,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     }
 
     private void sendRequestToServer(PatrobotData patrobotData) {
+        isWaitingForResponse = true; // 开始等待响应
         Gson gson = new Gson();
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("sessionId", patrobotData.getSessionId());
@@ -202,6 +209,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
 
         String json = gson.toJson(jsonObject);
         Log.d("Request JSON", "发送的数据: " + json);
+        // 更新按钮状态为“请等待”
+        runOnUiThread(() -> activatedButton.setText("请等待"));
 
         RequestBody body = RequestBody.create(json, JSON);
         Request request = new Request.Builder()
@@ -213,6 +222,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e("API Failure", "Error: " + e.getMessage());
+                isWaitingForResponse = false; // 请求失败或超时后重置状态
+                runOnUiThread(() -> {
+                    showToast("请求超时或失败");
+                    activatedButton.setText("未激活"); // 更新按钮文字为“未激活”
+                    startListening(); // 确保在请求失败后继续录音
+                });
             }
 
             @Override
@@ -226,6 +241,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                             // 处理返回结果
                             String handledResponse = handleResponseType(jsonResponse);
                             runOnUiThread(() -> {serverResponseTextView.setText(handledResponse);
+                                activatedButton.setText("未激活"); // 更新按钮文字为“未激活”
                             // 调用 TTS 播放 content
                             playTextToSpeech(handledResponse);});
                         } catch (JSONException e) {
@@ -248,8 +264,10 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                     } else {
                         Log.e("API Error", "Error code: " + res.code());
                     }
+                    isWaitingForResponse = false; // 请求成功或失败后都重置等待状态
                 } catch (IOException e) {
                     Log.e("API Error", "Error closing response: " + e.getMessage());
+                    isWaitingForResponse = false; // 处理异常后重置状态
                 }
             }
         });
@@ -264,8 +282,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     }
 
     private void startListening() {
-        if (mIat == null) {
-            showTip("创建对象失败，请确认 libmsc.so 放置正确，且有调用 createUtility 进行初始化");
+        if (mIat == null || isSpeaking || isWaitingForResponse) {
+            //showTip("创建对象失败，请确认 libmsc.so 放置正确，且有调用 createUtility 进行初始化");
             return;
         }
         buffer.setLength(0);
@@ -298,14 +316,18 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             ttsInitialized = true;
         }
         ttsUtil.setListener(() -> {
+            isSpeaking = false; // 播放结束后标记不再播放
             // 播放完成后继续录音
             startListening();
         });
         // 设置暂停按钮的点击事件
         pauseButton.setOnClickListener(v -> {
             ttsUtil.stopSpeaking(); // 暂停 TTS 播放
+            isSpeaking = false;
             startListening(); // 启动录音
         });
+        // 播放文本前设置 isSpeaking 为 true
+        isSpeaking = true;
         ttsUtil.speakText(text); // 播放文本
     }
 
@@ -335,7 +357,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
 
            // 显示“再次使用‘你好’唤醒可中断发言”提示
            handler.postDelayed(() -> {
-               showTip("再次使用‘你好’唤醒可中断发言");
+               //showTip("再次使用‘你好’唤醒可中断发言");
                Log.d(TAG, "showTip: 显示中间提示 '再次使用‘你好’唤醒可中断发言'");
            }, 500); // 延时500毫秒显示
        }
@@ -358,7 +380,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
            isListening = false; // 结束录音后重置
            if (isWaitingForNextInput) {
                // 播放语音并在结束后继续录音
-               speakText("你好，我是小信，你可以向我提问", () -> {
+               speakText("小信来啦", () -> {
                    isListening = true; // 播放后设置为正在录音
                    startListening(); // 开始录音
                });
@@ -433,7 +455,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
 
 
     private void startListeningWithDelay() {
-        mainHandler.postDelayed(this::startListening, 1000); // 1秒后继续识别
+        mainHandler.postDelayed(this::startListening, 100); // 1秒后继续识别
     }
 
     private void printResult(RecognizerResult results) {
@@ -466,6 +488,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             Log.d(TAG, "Processed Text (all lowercase): " + processedText);
             if (processedText.contains("你好")) {
                 isWaitingForNextInput = true;
+                runOnUiThread(() -> activatedButton.setText("已激活")); // 更新按钮文字为“已激活”
                 Log.d(TAG, "printResult: 进入等待下一句输入状态");
                 JSONObject jsonObject = new JSONObject();
                 try {
