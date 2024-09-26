@@ -2,6 +2,7 @@ package com.example.application_for_head_913;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -63,6 +64,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -81,6 +83,10 @@ import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.Player; // 确保导入了 Player
+
+// 添加机器人控制相关的导入，改动1
+import cn.inbot.padbotbasesdk.RobotManager;
+import cn.inbot.padbotbasesdk.RobotControlManager;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener {
     private boolean isWaitingForNextInput = false;
@@ -127,6 +133,21 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         SpeechUtility.createUtility(this, SpeechConstant.APPID + "=b8585b05");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // 找到按钮并设置点击监听
+        Button btnMoveToActivity = findViewById(R.id.btnMoveToActivity);
+        btnMoveToActivity.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // 跳转到 MoveActivity
+                Intent intent = new Intent(MainActivity.this, MoveActivity.class);
+                startActivity(intent);
+            }
+        });
+        // 初始化机器人控制-改动2
+        RobotManager.getInstance().init(getApplicationContext());
+        client = new OkHttpClient();
+
         checkPermissionAndInitialize();
         initializeViews();
         pauseButton = findViewById(R.id.pause_button);
@@ -143,7 +164,30 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
 
         setupExoPlayer();
     }
+    // 添加机器人控制逻辑-改动3
+    private void handleVoiceCommand(String command) {
+        if (command.contains("前进")) {
+            // 前进50厘米
+            RobotControlManager.getInstance().moveSpecifiedDistance(50, 100); // 50厘米，线速度100mm/s
+        } else if (command.contains("后退")) {
+            RobotControlManager.getInstance().moveSpecifiedAngle(180, 30.0f); // 右转90度，角速度30度/秒
 
+            // 后退50厘米
+            RobotControlManager.getInstance().moveSpecifiedDistance(50, 100); // 后退50厘米
+        } else if (command.contains("右转")) {
+            // 右转90度
+            RobotControlManager.getInstance().moveSpecifiedAngle(90, 30.0f); // 右转90度，角速度30度/秒
+        } else if (command.contains("左转")) {
+            // 左转90度
+            RobotControlManager.getInstance().moveSpecifiedAngle(-90, 30.0f); // 左转90度，角速度30度/秒
+        } else if (command.contains("转一圈")) {
+            // 右转360度
+            RobotControlManager.getInstance().moveSpecifiedAngle(360, 30.0f); // 右转360度，角速度30度/秒
+        } else {
+            // 未识别的命令
+            //showToast("无法识别的指令: " + command);
+        }
+    }
 
     private void initializeViews() {
         tvResult = findViewById(R.id.myEditText);
@@ -217,7 +261,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                 .url("http://222.200.184.74:8082/api/processRequest_origin")
                 .post(body)
                 .build();
-
+        // 创建OkHttpClient并设置超时时间
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(17, TimeUnit.SECONDS)
+                .readTimeout(17, TimeUnit.SECONDS)
+                .writeTimeout(17, TimeUnit.SECONDS)
+                .build();
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
@@ -234,6 +283,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             public void onResponse(Call call, Response response) throws IOException {
                 try (Response res = response) {
                     if (res.isSuccessful()) {
+                        isWaitingForResponse = false; // 请求成功或失败后都重置等待状态
                         String responseData = res.body().string();
                         Log.d("API Response", responseData);
                         try {
@@ -242,8 +292,15 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                             String handledResponse = handleResponseType(jsonResponse);
                             runOnUiThread(() -> {serverResponseTextView.setText(handledResponse);
                                 activatedButton.setText("未激活"); // 更新按钮文字为“未激活”
-                            // 调用 TTS 播放 content
-                            playTextToSpeech(handledResponse);});
+                                if (handledResponse.isEmpty()) {
+                                    isSpeaking = false; // 如果服务器返回为空，将isSpeaking设置为false
+                                    startListening(); // 继续录音
+                                } else {
+                                    // 调用 TTS 播放 content
+                                    playTextToSpeech(handledResponse);
+                                }
+                            });
+
                         } catch (JSONException e) {
                             Log.e("JSON Error", "Failed to parse JSON: " + e.getMessage());
                             runOnUiThread(() -> serverResponseTextView.setText("JSON Parse Error"));
@@ -264,7 +321,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                     } else {
                         Log.e("API Error", "Error code: " + res.code());
                     }
-                    isWaitingForResponse = false; // 请求成功或失败后都重置等待状态
+
                 } catch (IOException e) {
                     Log.e("API Error", "Error closing response: " + e.getMessage());
                     isWaitingForResponse = false; // 处理异常后重置状态
@@ -394,6 +451,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         @Override
         public void onResult(RecognizerResult results, boolean isLast) {
             Log.d(TAG, results.getResultString());
+            if(isWaitingForNextInput){
+                String command = parseCommandFromResult(results); // 解析语音识别结果
+                handleVoiceCommand(command); // 调用处理命令的函数
+            }
+
             if (isLast) {
                 Log.d(TAG, "onResult 结束" + results.getResultString());
             }
@@ -604,6 +666,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             return ""; // 返回空字符串以指示错误
         }
         return contentBuilder.toString().trim(); // 返回累积的内容
+    }
+    // 解析语音识别结果-改动4
+    private String parseCommandFromResult(RecognizerResult results) {
+        // 假设这是解析语音识别结果的逻辑，返回识别出的文字
+        return results.getResultString();
     }
 
 

@@ -66,6 +66,11 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    //    改动：以下三个依赖为新添加
+    implementation(files("lib/RobotSerialPort-1.3.0.jar"))
+    implementation(files("lib/RobotBaseSDK-1.19.2.jar"))
+    implementation("org.greenrobot:eventbus:3.3.1")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

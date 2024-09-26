@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/move"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- 前进 50cm 按钮 -->
+    <Button
+        android:id="@+id/btnMoveForward"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="前进"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <!-- 后退 50cm 按钮 -->
+    <Button
+        android:id="@+id/btnMoveBackward"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="后退"
+        app:layout_constraintTop_toBottomOf="@id/btnMoveForward"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <!-- 左转 90° 按钮 -->
+    <Button
+        android:id="@+id/btnTurnLeft"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="左转"
+        app:layout_constraintTop_toBottomOf="@id/btnMoveBackward"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <!-- 右转 90° 按钮 -->
+    <Button
+        android:id="@+id/btnTurnRight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="右转"
+        app:layout_constraintTop_toBottomOf="@id/btnTurnLeft"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <!-- 右转 360° 按钮 -->
+    <Button
+        android:id="@+id/btnTurnRight360"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="旋转一周"
+        app:layout_constraintTop_toBottomOf="@id/btnTurnRight"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

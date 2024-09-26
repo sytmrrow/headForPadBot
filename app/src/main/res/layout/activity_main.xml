@@ -29,6 +29,13 @@
         app:layout_constraintTop_toBottomOf="@id/tv_wake_up_prompt"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+    <Button
+        android:id="@+id/btnMoveToActivity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="手动控制机器人移动"
+        app:layout_constraintBottom_toBottomOf="@id/pause_button"
+        app:layout_constraintEnd_toEndOf="parent"/>
 
     <!-- 暂停并录音按钮 -->
     <Button
@@ -40,7 +47,6 @@
         android:backgroundTint="#FF0000"
         app:layout_constraintTop_toBottomOf="@id/playerView"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="8dp" />
 
     <!-- 包含三个问题的框 -->
