@@ -168,18 +168,28 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     private void handleVoiceCommand(String command) {
         if (command.contains("前进")) {
             // 前进50厘米
+            Log.d(TAG, "开始执行前进命令");
+
+            Log.i(TAG, "开始执行前进命令");
             RobotControlManager.getInstance().moveSpecifiedDistance(50, 100); // 50厘米，线速度100mm/s
+            Log.d(TAG, "前进命令执行成功");
+
         } else if (command.contains("后退")) {
-            RobotControlManager.getInstance().moveSpecifiedAngle(180, 30.0f); // 右转90度，角速度30度/秒
+//            RobotControlManager.getInstance().moveSpecifiedAngle(180, 30.0f); // 右转90度，角速度30度/秒
 
             // 后退50厘米
-            RobotControlManager.getInstance().moveSpecifiedDistance(50, 100); // 后退50厘米
-        } else if (command.contains("右转")) {
+            RobotControlManager.getInstance().moveSpecifiedDistance(-50, 100); // 后退50厘米
+        } else if (command.contains("右转")|command.contains("右传") ){
             // 右转90度
+            Log.d(TAG, "开始执行右转");
+            Log.i(TAG, "开始执行右转命令");
+
             RobotControlManager.getInstance().moveSpecifiedAngle(90, 30.0f); // 右转90度，角速度30度/秒
-        } else if (command.contains("左转")) {
+            Log.d(TAG, "右转命令执行成功");
+        } else if (command.contains("左转")|command.contains("左传")) {
             // 左转90度
             RobotControlManager.getInstance().moveSpecifiedAngle(-90, 30.0f); // 左转90度，角速度30度/秒
+            Log.d(TAG, "左转命令执行成功");
         } else if (command.contains("转一圈")) {
             // 右转360度
             RobotControlManager.getInstance().moveSpecifiedAngle(360, 30.0f); // 右转360度，角速度30度/秒
@@ -451,11 +461,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         @Override
         public void onResult(RecognizerResult results, boolean isLast) {
             Log.d(TAG, results.getResultString());
-            if(isWaitingForNextInput){
-                String command = parseCommandFromResult(results); // 解析语音识别结果
-                handleVoiceCommand(command); // 调用处理命令的函数
-            }
-
             if (isLast) {
                 Log.d(TAG, "onResult 结束" + results.getResultString());
             }
@@ -562,6 +567,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                 Log.d(TAG, "发送JSON到设备B: " + jsonObject.toString());
             } else if (isWaitingForNextInput) {
                 if (!processedText.isEmpty()) {
+                    handleVoiceCommand(processedText); // 调用处理命令的函数
                     PatrobotData voicedata = new PatrobotData();
                     voicedata.setPrompt(processedText);
                     sendRequestToServer(voicedata);

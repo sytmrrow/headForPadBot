@@ -1,13 +1,14 @@
 package com.example.application_for_head_913;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import androidx.appcompat.app.AppCompatActivity;
 import cn.inbot.padbotbasesdk.RobotControlManager;
 
 public class MoveActivity extends AppCompatActivity {
-
+    private static final String TAG = "MoveActivity"; // 定义 TAG 常量
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -19,7 +20,10 @@ public class MoveActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 // 前进 50cm
-                RobotControlManager.getInstance().moveSpecifiedDistance(500, 100); // 50厘米，线速度100mm/s
+                Log.i(TAG, "前进功能开始"); // 开始功能前打印
+                RobotControlManager.getInstance().moveSpecifiedDistance(50, 100); // 50厘米，线速度100mm/s
+                Log.i(TAG, "前进功能完成"); // 功能开始后打印
+
             }
         });
 
@@ -29,7 +33,9 @@ public class MoveActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 // 后退 50cm
-                RobotControlManager.getInstance().moveSpecifiedDistance(-500, 100); // 后退50厘米
+//                RobotControlManager.getInstance().moveSpecifiedAngle(-180, 30.0f); // 左转90度，角速度30度/秒
+
+                RobotControlManager.getInstance().moveSpecifiedDistance(-50, 100); // 后退50厘米
             }
         });
 
